@@ -1,8 +1,8 @@
 # Metronome S3 Ingest 
 Automatically ingest events into Metronome from files stored in a S3 bucket in following formats:
-- .csv
 - .json
-- .jsonl
+- .csv (coming soon)
+- .jsonl (coming soon)
 
 It uses AWS S3 trigger to call a lambda function. It logs errors into an S3 bucket via a SQS.
 
