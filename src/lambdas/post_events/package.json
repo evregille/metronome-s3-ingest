@@ -1,0 +1,20 @@
+{
+  "name": "post_events",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "npx tsc"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@metronome/sdk": "^0.1.0-beta.5"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-sqs": "^3.682.0",
+    "@types/node": "^22.8.7",
+    "typescript": "^5.6.3"
+  }
+}

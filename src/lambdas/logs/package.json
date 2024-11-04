@@ -1,0 +1,19 @@
+{
+  "name": "logs",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "npx tsc"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@aws-sdk/client-s3": "^3.685.0",
+    "@types/aws-lambda": "^8.10.145",
+    "@types/node": "^22.8.6",
+    "typescript": "^5.6.3",
+    "uuid": "^11.0.2"
+  }
+}
