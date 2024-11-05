@@ -43,13 +43,6 @@ resource "aws_iam_role" "post_events" {
   })
 }
 
-// Lambda additional role to invoke another lambda from ingest lambda
-resource "aws_iam_policy_attachment" "policy_invoke_for_lambda" {
-  name = "invoke-lambda"
-  roles       = [ aws_iam_role.ingest.name ]
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaRole"
-}
-
 resource "aws_iam_policy_attachment" "lambda_basic_execution" {
   name       = "basic-execution-role"
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
@@ -59,12 +52,13 @@ resource "aws_iam_policy_attachment" "lambda_basic_execution" {
 # SQS - SendMessage permission for ingest and post_events lambdas
 data "aws_iam_policy_document" "sqs_send_msg" {
   statement {
-    sid       = "PostEventsSendMessage"
+    sid       = "SQSSendMessage"
     actions   = [
       "sqs:SendMessage",
     ]
     resources = [
-      aws_sqs_queue.logs_queue.arn
+      aws_sqs_queue.logs_queue.arn,
+      aws_sqs_queue.ingest_queue.arn
     ]
   }
 }
@@ -74,20 +68,20 @@ resource "aws_iam_policy" "sqs_send_msg" {
   policy = data.aws_iam_policy_document.sqs_send_msg.json
 }
 
-resource "aws_iam_role_policy_attachment" "ingest" {
+resource "aws_iam_role_policy_attachment" "ingest_sqs_send_msg" {
   role       = aws_iam_role.ingest.name
   policy_arn = aws_iam_policy.sqs_send_msg.arn
 }
 
-resource "aws_iam_role_policy_attachment" "post_events" {
+resource "aws_iam_role_policy_attachment" "post_events_sqs_send_msg" {
   role       = aws_iam_role.post_events.name
   policy_arn = aws_iam_policy.sqs_send_msg.arn
 }
 
 # SQS - Read messages for the log lambda function
-data "aws_iam_policy_document" "logs" {
+data "aws_iam_policy_document" "sqs_receive_msg" {
   statement {
-    sid       = "LogsReceiveMessage"
+    sid       = "SQSReceiveMessage"
     actions   = [
       "sqs:ChangeMessageVisibility",
       "sqs:GetQueueAttributes",
@@ -96,22 +90,26 @@ data "aws_iam_policy_document" "logs" {
       "sqs:GetQueueAttributes"
     ]
     resources = [
-      aws_sqs_queue.logs_queue.arn
+      aws_sqs_queue.logs_queue.arn,
+      aws_sqs_queue.ingest_queue.arn
     ]
   }
 }
 
-resource "aws_iam_policy" "logs" {
-  name   = "policy_sqs_logs"
-  policy = data.aws_iam_policy_document.logs.json
+resource "aws_iam_policy" "sqs_receive_msg" {
+  name   = "policy_sqs_receive_msg"
+  policy = data.aws_iam_policy_document.sqs_receive_msg.json
 }
 
-resource "aws_iam_role_policy_attachment" "logs" {
+resource "aws_iam_role_policy_attachment" "logs_sqs_receive_msg" {
   role       = aws_iam_role.logs.name
-  policy_arn = aws_iam_policy.logs.arn
+  policy_arn = aws_iam_policy.sqs_receive_msg.arn
 }
 
-
+resource "aws_iam_role_policy_attachment" "post_events_sqs_receive_msg" {
+  role       = aws_iam_role.post_events.name
+  policy_arn = aws_iam_policy.sqs_receive_msg.arn
+}
 
 # S3 - read access to the s3 bucket ingest for our lambda arn
 resource "aws_s3_bucket_policy" "ingest" {

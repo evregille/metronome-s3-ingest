@@ -24,7 +24,7 @@ variable "lambda_node_version" {
 
 variable "store_only_errors" {
     type = string
-    default = "false"
+    default = "true"
 }
 
 variable "cloud_watch_retention_days" {

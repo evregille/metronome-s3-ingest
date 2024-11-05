@@ -1,12 +1,10 @@
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
-import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 
 const sqsClient = new SQSClient({});
-const SQS_QUEUE_URL = process.env["SQS_QUEUE_URL"];
-
+const SQS_LOG_QUEUE_URL = process.env["SQS_LOG_QUEUE_URL"];
+const SQS_INGEST_QUEUE_URL = process.env["SQS_INGEST_QUEUE_URL"]
 const s3Client = new S3Client({});
-const lambdaClient = new LambdaClient({});
 const MAX_EVENTS_PER_INGEST_BATCH = 100;
 
 type MetronomeEvent = {
@@ -36,7 +34,7 @@ exports.handler = async (event: any) => {
     const response: GetObjectS3 = await fetchObjectFromS3(bucket, key); 
 
     if(response.error && response.error === true){
-        console.log('INFO - Error reading file - logging the error.');
+        console.log('Error reading file - logging the error to S3.');
         log({
             message: `ERROR reading object ${key} from bucket ${bucket}: JSON formating issue.`, 
             events: response.events ? JSON.stringify(response.events) : '', 
@@ -55,7 +53,7 @@ exports.handler = async (event: any) => {
             }   
         });
         if(eventsInvalid.length > 0){ 
-            console.log('INFO - events invalid - logging the malformed events.')
+            console.log('Events invalid - logging to S3 the malformed events.')
             await log({
                 message: `Metronome malformated events in file ${key}.`, 
                 events: eventsInvalid, 
@@ -70,23 +68,22 @@ exports.handler = async (event: any) => {
             const promises = requests.map( async (r: any) => { 
                 try {
                     console.log(`INFO - ${events.length} to be sent to Metronome in ${requests.length} requests.`)
-                    const response = await lambdaClient.send(new InvokeCommand({
-                        FunctionName: process.env["LAMBDA_NAME_SEND_TO_METRONOME"],
-                        InvocationType: "Event", 
-                        Payload: JSON.stringify( r ),
-                    }));   
+                    const response = await sqsClient.send(new SendMessageCommand({
+                        QueueUrl: SQS_INGEST_QUEUE_URL,
+                        MessageBody: JSON.stringify(r),
+                    }));
                     if(response && response['$metadata'] && response['$metadata'].httpStatusCode  && response['$metadata'].httpStatusCode > 399)
                         await log({
-                            message: `ERROR - Invoking the ${process.env["LAMBDA_NAME_SEND_TO_METRONOME"]} function with status ${response['$metadata'].httpStatusCode}`, 
+                            message: `Error sending message to the ingest queue with status ${response['$metadata'].httpStatusCode}`, 
                             events: r ,
                             type:'error',
                         });
-                    else console.log(`INFO - Lambda successfully invoked.`)
+                    else console.log(`Message successfully sent to ingest queue.`)
                     return response;
                 } catch (e) {
-                    console.log('INFO - Error while invoking lambda to send events to Metronome. Logging the error.')
+                    console.log('Error while sending message to ingest queue. Logging the error.')
                     await log({
-                        message: `ERROR - Exception Invoking the ${process.env["LAMBDA_NAME_SEND_TO_METRONOME"]} function ${JSON.stringify(e)}`, 
+                        message: `Exception sending message to ingest queue ${JSON.stringify(e)}`, 
                         events: r , 
                         type:'error'
                     });
@@ -104,7 +101,7 @@ const fetchObjectFromS3 = async function(bucket:string, key: string): Promise<Ge
     if(!fileExtension || (fileExtension !== 'csv' && fileExtension !== 'json' && fileExtension !== 'jsonl')){
         return {
             error: true,
-            message: `ERROR - object created with wrong format: ${key}. Supported file format extensions are csv, json and jsonl`,
+            message: `Object created with wrong format: ${key}. Supported file format extensions are csv, json and jsonl`,
         }
     }
     try {
@@ -194,7 +191,7 @@ const log = async function(log: Log): Promise<void> {
     else{
         try {
             const response = await sqsClient.send(new SendMessageCommand({
-                QueueUrl: SQS_QUEUE_URL,
+                QueueUrl: SQS_LOG_QUEUE_URL,
                 MessageBody: JSON.stringify(log),
             }));
             if(response && response["$metadata"] && response["$metadata"].httpStatusCode && response["$metadata"].httpStatusCode < 399)

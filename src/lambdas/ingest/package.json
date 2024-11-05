@@ -10,7 +10,6 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
-    "@aws-sdk/client-lambda": "^3.682.0",
     "@aws-sdk/client-s3": "^3.685.0",
     "@aws-sdk/client-sqs": "^3.682.0",
     "@types/node": "^22.8.6",

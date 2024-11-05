@@ -12,7 +12,8 @@ type Log = {
     events?: Array<any> | string,
 }
 
-exports.handler = async (events:any) => {
+exports.handler = async (msg: any) => {
+    const events = JSON.parse(msg.Records[0].body);
     try{
         await clientMetronome.usage.ingest(events);
         await log({

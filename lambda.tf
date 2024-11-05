@@ -32,9 +32,9 @@ resource "aws_lambda_function" "ingest" {
   source_code_hash = data.archive_file.ingest.output_base64sha256
   environment {
     variables = {
-      LAMBDA_NAME_SEND_TO_METRONOME="${aws_lambda_function.post_events.arn}"
       STORE_ONLY_ERRORS = var.store_only_errors
-      SQS_QUEUE_URL = aws_sqs_queue.logs_queue.url
+      SQS_LOG_QUEUE_URL = aws_sqs_queue.logs_queue.url
+      SQS_INGEST_QUEUE_URL= aws_sqs_queue.ingest_queue.url
     }
   }
 }
