@@ -2,7 +2,7 @@ import Metronome from '@metronome/sdk';
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 
 const client = new SQSClient({});
-const SQS_QUEUE_URL = process.env['SQS_QUEUE_URL'];
+const SQS_DEAD_QUEUE_URL = process.env['SQS_DEAD_QUEUE_URL'];
 
 const clientMetronome = new Metronome({ bearerToken: process.env['METRONOME_API_KEY'] });
 
@@ -22,6 +22,7 @@ exports.handler = async (msg: any) => {
             type: 'success'
         })
     } catch (error) {
+        console.log('Exception sending events to Metronome.')
         await log({ 
             message:`ERROR - Exception ingest event to Metronome ${JSON.stringify(error)}`, 
             events, 
@@ -36,7 +37,7 @@ const log = async function(log: Log): Promise<void> {
     else{
         try {
             const cmd = new SendMessageCommand({
-                QueueUrl: SQS_QUEUE_URL,
+                QueueUrl: SQS_DEAD_QUEUE_URL,
                 MessageBody: JSON.stringify(log),
             })
             const response = await client.send(cmd);

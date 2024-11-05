@@ -57,7 +57,7 @@ data "aws_iam_policy_document" "sqs_send_msg" {
       "sqs:SendMessage",
     ]
     resources = [
-      aws_sqs_queue.logs_queue.arn,
+      aws_sqs_queue.deadletter_queue.arn,
       aws_sqs_queue.ingest_queue.arn
     ]
   }
@@ -90,7 +90,7 @@ data "aws_iam_policy_document" "sqs_receive_msg" {
       "sqs:GetQueueAttributes"
     ]
     resources = [
-      aws_sqs_queue.logs_queue.arn,
+      aws_sqs_queue.deadletter_queue.arn,
       aws_sqs_queue.ingest_queue.arn
     ]
   }

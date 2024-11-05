@@ -2,7 +2,7 @@ import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 
 const sqsClient = new SQSClient({});
-const SQS_LOG_QUEUE_URL = process.env["SQS_LOG_QUEUE_URL"];
+const SQS_DEAD_QUEUE_URL = process.env["SQS_DEAD_QUEUE_URL"];
 const SQS_INGEST_QUEUE_URL = process.env["SQS_INGEST_QUEUE_URL"]
 const s3Client = new S3Client({});
 const MAX_EVENTS_PER_INGEST_BATCH = 100;
@@ -37,7 +37,6 @@ exports.handler = async (event: any) => {
         console.log('Error reading file - logging the error to S3.');
         log({
             message: `ERROR reading object ${key} from bucket ${bucket}: JSON formating issue.`, 
-            events: response.events ? JSON.stringify(response.events) : '', 
             type:'error'
         })
     }
@@ -53,7 +52,7 @@ exports.handler = async (event: any) => {
             }   
         });
         if(eventsInvalid.length > 0){ 
-            console.log('Events invalid - logging to S3 the malformed events.')
+            console.log(`Events invalid - logging to S3 the ${eventsInvalid.length} malformed events.`, eventsInvalid)
             await log({
                 message: `Metronome malformated events in file ${key}.`, 
                 events: eventsInvalid, 
@@ -65,9 +64,9 @@ exports.handler = async (event: any) => {
                return xs.length === 0 ? y : splitEvery(n, xs.slice(n), y.concat([xs.slice(0, n)])) 
             };
             requests = splitEvery(MAX_EVENTS_PER_INGEST_BATCH, events);
+            console.log(`Sending ${events.length} to Metronome split into ${requests.length} requests.`)
             const promises = requests.map( async (r: any) => { 
                 try {
-                    console.log(`INFO - ${events.length} to be sent to Metronome in ${requests.length} requests.`)
                     const response = await sqsClient.send(new SendMessageCommand({
                         QueueUrl: SQS_INGEST_QUEUE_URL,
                         MessageBody: JSON.stringify(r),
@@ -78,7 +77,6 @@ exports.handler = async (event: any) => {
                             events: r ,
                             type:'error',
                         });
-                    else console.log(`Message successfully sent to ingest queue.`)
                     return response;
                 } catch (e) {
                     console.log('Error while sending message to ingest queue. Logging the error.')
@@ -116,6 +114,7 @@ const fetchObjectFromS3 = async function(bucket:string, key: string): Promise<Ge
                 message: `Error fetching file ${key}: response empty file.`,
             }  
         }
+        responseString = responseString.replace(/\r/g, ""); 
         let events: MetronomeEvent[] = [];
         if(fileExtension === 'json' || fileExtension === 'jsonl') {
             try{
@@ -158,13 +157,15 @@ const csvToJson = function(csvString:string): Array<MetronomeEvent> {
 
     for (let i = 1; i < rows.length; i++) {
         const values = rows[i].split(",");
-        let obj : {[k: string]: any} = {};
-        for (let j = 0; j < headers.length; j++) {
-            const key: string = headers[j].trim();
-            const value: string = values[j].trim();
-            obj[key] = value;
+        if(values.length > 0){
+            let obj : {[k: string]: any} = {};
+            for (let j = 0; j < headers.length; j++) {
+                const key: string = headers[j].trim();
+                const value: string | undefined = values[j] ? values[j].trim() : undefined;
+                obj[key] = value;
+            }
+            jsonData.push(obj as MetronomeEvent);
         }
-        jsonData.push(obj as MetronomeEvent);
     }
     return jsonData;
 }
@@ -184,14 +185,13 @@ const buildEventProperties = function(events: any): Array<MetronomeEvent> {
     });
 }
 
-
 // publish logs to SQS 
 const log = async function(log: Log): Promise<void> {
     if(log.type && log.type !== 'error' && process.env["STORE_ONLY_ERRORS"] === "true"){}
     else{
         try {
             const response = await sqsClient.send(new SendMessageCommand({
-                QueueUrl: SQS_LOG_QUEUE_URL,
+                QueueUrl: SQS_DEAD_QUEUE_URL,
                 MessageBody: JSON.stringify(log),
             }));
             if(response && response["$metadata"] && response["$metadata"].httpStatusCode && response["$metadata"].httpStatusCode < 399)

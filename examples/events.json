@@ -1,0 +1,21 @@
+[{
+    "event_type":"hello"
+},{
+    "transaction_id":"1233",
+    "customer_id":"2344",
+    "event_type":"hello",
+    "timestamp":"2024-11-04T00:00:00Z"
+},{
+    "transaction_id":"123",
+    "customer_id":"234",
+    "event_type":"hello",
+    "timestamp":"2024-11-01T00:00:00Z",
+    "properties":{
+        "hello": "world"
+    }
+},{
+    "transaction_id":"123",
+    "customer_id":"234",
+    "event_type":"hello",
+    "timestamp":"2024-11-01T00:00:00Z"
+}]

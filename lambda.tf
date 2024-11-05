@@ -33,7 +33,7 @@ resource "aws_lambda_function" "ingest" {
   environment {
     variables = {
       STORE_ONLY_ERRORS = var.store_only_errors
-      SQS_LOG_QUEUE_URL = aws_sqs_queue.logs_queue.url
+      SQS_DEAD_QUEUE_URL = aws_sqs_queue.deadletter_queue.url
       SQS_INGEST_QUEUE_URL= aws_sqs_queue.ingest_queue.url
     }
   }
@@ -113,7 +113,7 @@ resource "aws_lambda_function" "post_events" {
   environment {
     variables = {
       METRONOME_API_KEY = var.metronome_api_key
-      SQS_QUEUE_URL = aws_sqs_queue.logs_queue.url
+      SQS_DEAD_QUEUE_URL = aws_sqs_queue.deadletter_queue.url
       STORE_ONLY_ERRORS = var.store_only_errors
     }
   }
