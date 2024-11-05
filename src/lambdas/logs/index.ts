@@ -10,7 +10,6 @@ type Response = {
 
 exports.handler = async function(msg: any): Promise<Response>{
   const log = JSON.parse(msg.Records[0].body);
-  console.log(log)
   try {
     await s3Client.send(new PutObjectCommand({
       Bucket: process.env["S3_BUCKET_LOGS"],
@@ -18,6 +17,7 @@ exports.handler = async function(msg: any): Promise<Response>{
       Body: JSON.stringify(log),
       ContentType: "application/json"
     }));
+    console.log(`${log.type} log stored in s3`)
     return {
       statusCode: 200,
       body: JSON.stringify("Log stored successfully!"),

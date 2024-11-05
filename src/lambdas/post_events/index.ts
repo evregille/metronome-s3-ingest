@@ -31,9 +31,7 @@ exports.handler = async (events:any) => {
 
 // publish logs to SQS 
 const log = async function(log: Log): Promise<void> {
-    if(log.type && log.type !== 'error' && process.env["STORE_ONLY_ERRORS"] === "true"){
-        console.log('Log not sent', log)
-    }
+    if(log.type && log.type !== 'error' && process.env["STORE_ONLY_ERRORS"] === "true"){}
     else{
         try {
             const cmd = new SendMessageCommand({
